@@ -1025,7 +1025,7 @@ str_new_frozen(VALUE klass, VALUE orig)
 	str = str_new(klass, RSTRING_PTR(orig), RSTRING_LEN(orig));
     }
     else {
-	if (FL_TEST(orig, STR_SHARED)) {
+	if (FL_TEST_RAW(orig, STR_SHARED)) {
 	    VALUE shared = RSTRING(orig)->as.heap.aux.shared;
 	    long ofs = RSTRING(orig)->as.heap.ptr - RSTRING(shared)->as.heap.ptr;
 	    long rest = RSTRING(shared)->as.heap.len - ofs - RSTRING(orig)->as.heap.len;
@@ -1236,8 +1236,32 @@ str_replace(VALUE str, VALUE str2)
 static VALUE
 str_duplicate(VALUE klass, VALUE str)
 {
+    enum {embed_size = RSTRING_EMBED_LEN_MAX + 1};
+    const VALUE flag_mask =
+	RSTRING_NOEMBED | RSTRING_EMBED_LEN_MASK |
+	ENC_CODERANGE_MASK | ENCODING_MASK |
+	FL_TAINT | FL_FREEZE
+	;
+    VALUE flags = FL_TEST_RAW(str, flag_mask);
     VALUE dup = str_alloc(klass);
-    str_replace(dup, str);
+    MEMCPY(RSTRING(dup)->as.ary, RSTRING(str)->as.ary,
+	   char, embed_size);
+    if (flags & STR_NOEMBED) {
+	if (UNLIKELY(!(flags & FL_FREEZE))) {
+	    str = str_new_frozen(klass, str);
+	    FL_SET_RAW(str, flags & FL_TAINT);
+	    flags = FL_TEST_RAW(str, flag_mask);
+	}
+	if (flags & STR_NOEMBED) {
+	    RB_OBJ_WRITE(dup, &RSTRING(dup)->as.heap.aux.shared, str);
+	    flags |= STR_SHARED;
+	}
+	else {
+	    MEMCPY(RSTRING(dup)->as.ary, RSTRING(str)->as.ary,
+		   char, embed_size);
+	}
+    }
+    FL_SET_RAW(dup, flags & ~FL_FREEZE);
     return dup;
 }
 
@@ -1250,30 +1274,11 @@ rb_str_dup(VALUE str)
 VALUE
 rb_str_resurrect(VALUE str)
 {
-    VALUE dup;
-    VALUE flags = FL_TEST_RAW(str,
-			      RSTRING_NOEMBED |
-			      RSTRING_EMBED_LEN_MASK |
-			      ENC_CODERANGE_MASK |
-			      ENCODING_MASK |
-			      FL_TAINT | FL_FREEZE);
-
     if (RUBY_DTRACE_STRING_CREATE_ENABLED()) {
 	RUBY_DTRACE_STRING_CREATE(RSTRING_LEN(str),
 				  rb_sourcefile(), rb_sourceline());
     }
-    dup = str_alloc(rb_cString);
-    MEMCPY(RSTRING(dup)->as.ary, RSTRING(str)->as.ary, VALUE, 3);
-    if (flags & STR_NOEMBED) {
-	if (UNLIKELY(!(flags & FL_FREEZE))) {
-	    str = str_new_frozen(rb_cString, str);
-	    FL_SET_RAW(str, flags & FL_TAINT);
-	}
-	RB_OBJ_WRITE(dup, &RSTRING(dup)->as.heap.aux.shared, str);
-	flags |= STR_SHARED;
-    }
-    FL_SET_RAW(dup, flags & ~FL_FREEZE);
-    return dup;
+    return str_duplicate(rb_cString, str);
 }
 
 /*
@@ -1598,6 +1603,15 @@ rb_str_times(VALUE str, VALUE times)
     char *ptr2;
     int termlen;
 
+    if (times == INT2FIX(1)) {
+	return rb_str_dup(str);
+    }
+    if (times == INT2FIX(0)) {
+	str2 = str_alloc(rb_obj_class(str));
+	rb_enc_copy(str2, str);
+	OBJ_INFECT(str2, str);
+	return str2;
+    }
     len = NUM2LONG(times);
     if (len < 0) {
 	rb_raise(rb_eArgError, "negative argument");
@@ -8955,8 +8969,8 @@ rb_sym_proc_call(VALUE args, VALUE sym, int argc, const VALUE *argv, VALUE passe
  *   (1..3).collect(&:to_s)  #=> ["1", "2", "3"]
  */
 
-static VALUE
-sym_to_proc(VALUE sym)
+VALUE
+rb_sym_to_proc(VALUE sym)
 {
     static VALUE sym_proc_cache = Qfalse;
     enum {SYM_PROC_CACHE_SIZE = 67};
@@ -9366,7 +9380,7 @@ Init_String(void)
     rb_define_method(rb_cSymbol, "id2name", rb_sym_to_s, 0);
     rb_define_method(rb_cSymbol, "intern", sym_to_sym, 0);
     rb_define_method(rb_cSymbol, "to_sym", sym_to_sym, 0);
-    rb_define_method(rb_cSymbol, "to_proc", sym_to_proc, 0);
+    rb_define_method(rb_cSymbol, "to_proc", rb_sym_to_proc, 0);
     rb_define_method(rb_cSymbol, "succ", sym_succ, 0);
     rb_define_method(rb_cSymbol, "next", sym_succ, 0);
 

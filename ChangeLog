@@ -1,3 +1,99 @@
+Fri Oct  9 06:52:49 2015  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+
+	* benchmark/prepare_require.rb: skip file creation if it already
+	  exist. Suggested by ko1.
+
+Fri Oct  9 06:18:04 2015  KOSAKI Motohiro  <kosaki.motohiro@gmail.com>
+	* benchmark/bm_require.rb: new benchmark for require.
+	* benchmark/bm_require_thread.rb: new benchmark for conflicting
+	  require vs thread. like [Bug #11559]
+	* prepare_require.rb: new file for preparing above tests.
+	* prepare_require.rb: ditto.
+
+Thu Oct  8 14:10:45 2015  Zachary Scott  <zzak@ruby-lang.org>
+
+	* ext/openssl/lib/openssl/ssl.rb: Default to TLSv1.2 and drop TLS v1
+	  Patch provided by @claudijd [Fixes GH-873] [Feature #11524]:
+	  https://github.com/ruby/ruby/pull/873
+
+Wed Oct  7 22:55:02 2015  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* test/minitest/metametameta.rb (with_output): restore output to
+	  fix mixing test result output in worker responses.
+
+Wed Oct  7 21:32:51 2015  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* string.c (str_duplicate): move from rb_str_resurrect to short
+	  circuit initialization.
+
+Wed Oct  7 20:43:14 2015  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* string.c (rb_str_resurrect): fix resurrection of short enough to
+	  be embedded but not embedded string.
+
+Wed Oct 07 20:17:29 2015  Koichi Sasada  <ko1@atdot.net>
+
+	* gc.c (newobj_of): divide fast path and slow path
+	  to avoid register savings for fast path.
+
+	  This idea is given by Kazuho Oku <kazuho@natadeco.co>.
+
+Wed Oct  7 17:30:50 2015  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* string.c (rb_str_times): optimize for the argument 0 and 1.
+
+Wed Oct  7 01:20:46 2015  Koichi Sasada  <ko1@atdot.net>
+
+	* gc.h, gc.c: introduce new debug function rb_obj_info_dump(VALUE obj)
+	  which prints the result of rb_raw_obj_info(..., obj).
+
+Wed Oct  7 01:16:11 2015  Koichi Sasada  <ko1@atdot.net>
+
+	* vm_args.c: remove an unused field args_info::calling.
+
+Tue Oct  6 23:43:10 2015  Koichi Sasada  <ko1@atdot.net>
+
+	* proc.c (rb_method_entry_min_max_arity): should support
+	  OPTIMIZED_METHOD_TYPE_CALL.
+
+Tue Oct  6 21:29:08 2015  Tanaka Akira  <akr@fsij.org>
+
+	* lib/tmpdir.rb (Dir.tmpdir): return duplicated string to be
+	  modify safely even when $SAFE > 0.
+
+Tue Oct  6 19:24:38 2015  Koichi Sasada  <ko1@atdot.net>
+
+	* vm_insnhelper.c (vm_call_method0): use switch() for visibilities
+	  (for readability).
+
+Tue Oct  6 19:23:58 2015  Koichi Sasada  <ko1@atdot.net>
+
+	* proc.c (Init_Proc): Proc#call and others should be public.
+
+Tue Oct  6 18:51:51 2015  Koichi Sasada  <ko1@atdot.net>
+
+	* method.h: IMEMO_FL_USER3 and IMEMO_FL_USER4 is not needed any more.
+
+Tue Oct  6 18:47:45 2015  Koichi Sasada  <ko1@atdot.net>
+
+	* method.h: remove METHOD_ENTRY_SAFE(me) and related code
+	  because $SAFE = 3 and 4 is not available.
+	  Now, $SAFE is not checked on method dispatch at all.
+
+	* vm_eval.c, vm_insnhelper.c, vm_method.c: ditto.
+
+Tue Oct  6 13:56:14 2015  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* include/ruby/ruby.h: turn function macros into inline functions,
+	  for debuggers.
+
+	* include/ruby/ruby.h: turn constant macros into enums, for
+	  debuggers.
+
+Tue Oct  6 13:48:05 2015  SHIBATA Hiroshi  <hsbt@ruby-lang.org>
+
+	* method.h: typo fix. Patch by @davydovanton [fix GH-1032][ci skip]
+
 Tue Oct  6 06:54:34 2015  Koichi Sasada  <ko1@atdot.net>
 
 	* iseq.c (rb_iseq_free): free iseq::variable_body to avoid memory

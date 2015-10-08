@@ -15,7 +15,6 @@ VALUE rb_keyword_error_new(const char *error, VALUE keys); /* class.c */
 
 struct args_info {
     /* basic args info */
-    struct rb_calling_info *calling;
     VALUE *argv;
     int argc;
     const struct rb_call_info_kw_arg *kw_arg;
@@ -478,6 +477,10 @@ args_setup_block_parameter(rb_thread_t *th, struct rb_calling_info *calling, VAL
 	    GetProcPtr(blockval, proc);
 	    calling->blockptr = &proc->block;
 	}
+	else if (RUBY_VM_IFUNC_P(blockptr->proc)) {
+	    const ID mid = (ID)((struct vm_ifunc *)blockptr->proc)->data;
+	    blockval = rb_sym_to_proc(ID2SYM(mid));
+	}
 	else {
 	    blockval = blockptr->proc;
 	}
@@ -537,7 +540,6 @@ setup_parameters_complex(rb_thread_t * const th, const rb_iseq_t * const iseq,
 
     /* setup args */
     args = &args_body;
-    args->calling = calling;
     given_argc = args->argc = calling->argc;
     args->argv = locals;
 
